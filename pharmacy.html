@@ -1,0 +1,227 @@
+ <!DOCTYPE html><html lang="en"><head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ascura Pharmacy Management System</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }body {
+  background-color: #f3f9fb;
+  color: #333;
+}
+
+header {
+  background-color: #0288d1;
+  color: white;
+  padding: 1rem;
+  text-align: center;
+}
+
+nav {
+  display: flex;
+  background-color: #01579b;
+  padding: 1rem;
+  gap: 1rem;
+  justify-content: center;
+}
+
+nav button {
+  background-color: #03a9f4;
+  border: none;
+  padding: 0.5rem 1rem;
+  color: white;
+  cursor: pointer;
+  border-radius: 5px;
+}
+
+nav button:hover {
+  background-color: #0288d1;
+}
+
+section {
+  padding: 2rem;
+}
+
+.hidden {
+  display: none;
+}
+
+input, textarea, select {
+  padding: 0.5rem;
+  margin-bottom: 1rem;
+  width: 100%;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 1rem;
+}
+
+table, th, td {
+  border: 1px solid #ccc;
+}
+
+th, td {
+  padding: 0.75rem;
+  text-align: left;
+}
+
+canvas {
+  max-width: 100%;
+}
+
+.logout {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+}
+
+  </style>
+</head><body>
+  <header>
+    <h1>Ascura Pharmacy Management System</h1>
+    <button class="logout" onclick="logout()">Logout</button>
+  </header>  <nav>
+    <button onclick="show('dashboard')">Dashboard</button>
+    <button onclick="show('inventory')">Inventory</button>
+    <button onclick="show('sales')">Sales</button>
+    <button onclick="show('customers')">Customers</button>
+    <button onclick="show('prescriptions')">Prescriptions</button>
+    <button onclick="show('reports')">Reports</button>
+  </nav>  <section id="dashboard">
+    <h2>Welcome to Admin Dashboard</h2>
+    <p>Total Products: <span id="totalProducts">0</span></p>
+    <p>Total Sales: PKR <span id="totalSales">0</span></p>
+  </section>  <section id="inventory" class="hidden">
+    <h2>Manage Inventory</h2>
+    <input type="text" id="productName" placeholder="Product Name">
+    <input type="number" id="productPrice" placeholder="Price">
+    <input type="number" id="productQty" placeholder="Quantity">
+    <button onclick="addProduct()">Add Product</button>
+    <table>
+      <thead>
+        <tr><th>Name</th><th>Price</th><th>Qty</th><th>Action</th></tr>
+      </thead>
+      <tbody id="productTable"></tbody>
+    </table>
+  </section>  <section id="sales" class="hidden">
+    <h2>Sales</h2>
+    <input type="text" id="saleProduct" placeholder="Product Name">
+    <input type="number" id="saleQty" placeholder="Quantity">
+    <button onclick="recordSale()">Record Sale</button>
+    <div>
+      <button onclick="printInvoice()">Print Invoice</button>
+    </div>
+    <table>
+      <thead>
+        <tr><th>Product</th><th>Qty</th><th>Total</th></tr>
+      </thead>
+      <tbody id="salesTable"></tbody>
+    </table>
+  </section>  <section id="customers" class="hidden">
+    <h2>Customer Details</h2>
+    <input type="text" id="custName" placeholder="Customer Name">
+    <input type="text" id="custContact" placeholder="Contact">
+    <button onclick="addCustomer()">Add Customer</button>
+    <table>
+      <thead>
+        <tr><th>Name</th><th>Contact</th></tr>
+      </thead>
+      <tbody id="customerTable"></tbody>
+    </table>
+  </section>  <section id="prescriptions" class="hidden">
+    <h2>Upload Prescription</h2>
+    <input type="file" id="prescUpload" accept=".jpg,.jpeg,.png,.pdf">
+    <button onclick="uploadPrescription()">Upload</button>
+    <div id="prescriptionList"></div>
+  </section>  <section id="reports" class="hidden">
+    <h2>Reports</h2>
+    <canvas id="salesChart" height="150"></canvas>
+  </section>  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>  <script>
+    let products = [];
+    let customers = [];
+    let sales = [];
+
+    function show(id) {
+      document.querySelectorAll('section').forEach(s => s.classList.add('hidden'));
+      document.getElementById(id).classList.remove('hidden');
+      if (id === 'reports') drawChart();
+    }
+
+    function logout() {
+      alert("Logged out!");
+      location.reload();
+    }
+
+    function addProduct() {
+      const name = productName.value;
+      const price = +productPrice.value;
+      const qty = +productQty.value;
+      products.push({ name, price, qty });
+      updateProductTable();
+    }
+
+    function updateProductTable() {
+      totalProducts.textContent = products.length;
+      productTable.innerHTML = products.map((p, i) => `
+        <tr><td>${p.name}</td><td>${p.price}</td><td>${p.qty}</td>
+        <td><button onclick="deleteProduct(${i})">Delete</button></td></tr>`).join('');
+    }
+
+    function deleteProduct(i) {
+      products.splice(i, 1);
+      updateProductTable();
+    }
+
+    function recordSale() {
+      const name = saleProduct.value;
+      const qty = +saleQty.value;
+      const product = products.find(p => p.name === name);
+      if (!product || product.qty < qty) return alert("Insufficient stock or invalid product");
+      const total = product.price * qty;
+      product.qty -= qty;
+      sales.push({ name, qty, total });
+      totalSales.textContent = sales.reduce((s, x) => s + x.total, 0);
+      updateProductTable();
+      salesTable.innerHTML = sales.map(s => `<tr><td>${s.name}</td><td>${s.qty}</td><td>${s.total}</td></tr>`).join('');
+    }
+
+    function printInvoice() {
+      window.print();
+    }
+
+    function addCustomer() {
+      const name = custName.value;
+      const contact = custContact.value;
+      customers.push({ name, contact });
+      customerTable.innerHTML = customers.map(c => `<tr><td>${c.name}</td><td>${c.contact}</td></tr>`).join('');
+    }
+
+    function uploadPrescription() {
+      const file = prescUpload.files[0];
+      if (!file) return alert("No file selected");
+      const reader = new FileReader();
+      reader.onload = () => {
+        const url = reader.result;
+        prescriptionList.innerHTML += `<div><a href="${url}" target="_blank">View Prescription</a></div>`;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function drawChart() {
+      const ctx = document.getElementById('salesChart');
+      const labels = sales.map(s => s.name);
+      const data = sales.map(s => s.total);
+      new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels,
+          datasets: [{ label: 'Sales (PKR)', data, backgroundColor: '#03a9f4' }]
+        }
+      });
+    }
+  </script></body></html> 
